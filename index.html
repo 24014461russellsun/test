@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Judging scoreboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F4; --surface:#FFFFFF; --ink:#16213A; --muted:#5B6578; --rule:#D5DAD8;
+  --a:#0F7A6C; --a-soft:#DDF0EC; --b:#7A3E6E; --b-soft:#F1E3EE; --gold:#B8871E; --warn:#B4472B;
+  --focus:#2563EB;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10161F; --surface:#18202C; --ink:#E7ECF2; --muted:#9AA5B5; --rule:#2C3748;
+    --a:#3FBFA9; --a-soft:#163A35; --b:#D58AC5; --b-soft:#3A2236; --gold:#E2B24A; --warn:#EE8A6E; --focus:#7AA7FF;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10161F; --surface:#18202C; --ink:#E7ECF2; --muted:#9AA5B5; --rule:#2C3748;
+  --a:#3FBFA9; --a-soft:#163A35; --b:#D58AC5; --b-soft:#3A2236; --gold:#E2B24A; --warn:#EE8A6E; --focus:#7AA7FF;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,"Segoe UI",Roboto,Arial,sans-serif;font-size:16px;line-height:1.45}
+h1,h2,h3,.num,.tab,button.big{font-family:"Barlow Condensed","Arial Narrow",Arial,sans-serif}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+
+header{background:var(--ink);color:var(--bg)}
+header .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px}
+header h1{margin:0;font-size:1.7rem;font-weight:700;letter-spacing:.01em;flex:1 1 auto}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+.tab{background:transparent;border:0;color:inherit;opacity:.72;font-size:1.15rem;font-weight:600;padding:6px 12px;border-radius:6px;cursor:pointer}
+.tab:hover{opacity:1}
+.tab[aria-current="true"]{opacity:1;background:rgba(127,127,127,.25)}
+
+main{padding:26px 0 60px}
+.notice{border:1px solid var(--warn);color:var(--warn);background:var(--surface);padding:10px 14px;border-radius:8px;margin-bottom:18px}
+.hidden{display:none!important}
+
+/* Leaderboard */
+.lb-head{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.lb-head h2{margin:0;font-size:2.4rem;line-height:1}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:7px 14px;cursor:pointer;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-size:.85rem;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+.rank{font-family:"Barlow Condensed",Arial,sans-serif;font-size:1.5rem;font-weight:700;width:56px}
+tr.top1 .rank{color:var(--gold)}
+.avg{font-family:"Barlow Condensed",Arial,sans-serif;font-size:1.5rem;font-weight:700}
+.chip{display:inline-block;font-size:.78rem;font-weight:600;padding:1px 8px;border-radius:99px}
+.chip.A{background:var(--a-soft);color:var(--a)} .chip.B{background:var(--b-soft);color:var(--b)}
+.dim{color:var(--muted)}
+.bar{height:6px;background:var(--rule);border-radius:3px;width:90px;display:inline-block;vertical-align:middle;margin-left:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink)}
+.podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
+.pod{background:var(--surface);border:1px solid var(--rule);border-left:6px solid var(--rule);border-radius:10px;padding:14px 16px}
+.pod.p1{border-left-color:var(--gold)}
+.pod .place{font-family:"Barlow Condensed",Arial,sans-serif;font-weight:600;color:var(--muted)}
+.pod .name{font-size:1.25rem;font-weight:600;margin:2px 0}
+.pod .score{font-family:"Barlow Condensed",Arial,sans-serif;font-size:2.6rem;font-weight:700;line-height:1}
+
+/* Rubric */
+.rubric{display:grid;gap:12px}
+.crit{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:16px 18px;display:grid;grid-template-columns:1fr auto;gap:4px 16px}
+.crit h3{margin:0;font-size:1.45rem}
+.crit .max{font-family:"Barlow Condensed",Arial,sans-serif;font-size:1.45rem;font-weight:700;text-align:right}
+.crit p{margin:0;color:var(--muted);grid-column:1/-1;max-width:70ch;white-space:pre-line}
+
+/* Login */
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:22px;max-width:460px}
+.card h2{margin:0 0 4px;font-size:2rem}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+.choice{border:2px solid var(--rule);background:var(--surface);border-radius:10px;padding:12px 8px;cursor:pointer;font-weight:600;text-align:center}
+.choice[aria-pressed="true"].A{border-color:var(--a);background:var(--a-soft);color:var(--a)}
+.choice[aria-pressed="true"].B{border-color:var(--b);background:var(--b-soft);color:var(--b)}
+.choice[aria-pressed="true"].X{border-color:var(--ink)}
+label{display:block;font-weight:600;font-size:.92rem;margin:12px 0 4px}
+input[type=text],input[type=password],input[type=number],textarea{width:100%;border:1px solid var(--rule);background:var(--bg);border-radius:8px;padding:9px 11px}
+textarea{min-height:160px;resize:vertical}
+button.big{background:var(--ink);color:var(--bg);border:0;border-radius:8px;padding:10px 18px;font-size:1.2rem;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--rule);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.danger{border-color:var(--warn);color:var(--warn)}
+.err{color:var(--warn);min-height:1.4em;margin-top:8px}
+
+/* Scoring */
+.score-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.score-head h2{margin:0;font-size:2.2rem;flex:1 1 auto}
+.judges{display:flex;gap:6px}
+.judges button{min-width:46px}
+.status{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+.progress{height:8px;background:var(--rule);border-radius:4px;overflow:hidden;margin:6px 0 18px}
+.progress i{display:block;height:100%;background:var(--accent,var(--ink));transition:width .3s}
+.teams{display:grid;gap:10px}
+.team{background:var(--surface);border:1px solid var(--rule);border-left:5px solid var(--rule);border-radius:10px;padding:12px 14px}
+.team.done{border-left-color:var(--accent)}
+.team-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.team-top b{font-size:1.1rem}
+.team-top .num{font-size:1.35rem;font-weight:700}
+.crit-inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.crit-inputs label{margin:0;font-weight:500;font-size:.85rem;color:var(--muted)}
+.crit-inputs input{margin-top:3px;font-size:1.1rem;font-weight:600}
+.crit-inputs input.bad{border-color:var(--warn)}
+.sub{font-size:1.5rem;margin:28px 0 10px}
+
+/* Admin */
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.box{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:16px 18px}
+.box h3{margin:0 0 6px;font-size:1.4rem}
+.crit-row{display:grid;grid-template-columns:1fr 80px auto;gap:6px;margin-bottom:6px;align-items:start}
+.crit-row textarea{grid-column:1/-1;min-height:54px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+@media (prefers-reduced-motion: reduce){.progress i{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1 id="eventName">Judging scoreboard</h1>
+    <nav aria-label="Main">
+      <button class="tab" data-view="leaderboard">Leaderboard</button>
+      <button class="tab" data-view="rubric">Rubric</button>
+      <button class="tab" data-view="score" id="tabScore">Panel login</button>
+      <button class="tab hidden" data-view="admin" id="tabAdmin">Settings</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="dbNotice" class="notice hidden" role="status"></div>
+
+  <section id="view-leaderboard"></section>
+  <section id="view-rubric" class="hidden"></section>
+  <section id="view-login" class="hidden"></section>
+  <section id="view-score" class="hidden"></section>
+  <section id="view-admin" class="hidden"></section>
+</main>
+
+
+<script>
+(function(){
+  /* ============================================================
+     PASTE YOUR APPS SCRIPT WEB APP URL BETWEEN THE QUOTES BELOW
+     (it ends in /exec). See README.md for setup steps.
+     ============================================================ */
+  const API_URL = "https://script.google.com/macros/s/AKfycbzDPZEeqsEjFZ2w1VGp0VA4OT66InJ-4fwc-PQIthGejNSrW2-eGj70fbgwg3dOFFOa/exec";
+
+  const POLL_MS = 5000;   // how often the page checks for new scores
+  const DEFAULT_CONFIG = {
+    event: "Judging scoreboard",
+    rubric: [
+      {name:"Problem & idea", max:10, desc:"How clearly the team defines the problem and how original the solution is."},
+      {name:"Execution", max:10, desc:"Quality, completeness and soundness of what was built or delivered."},
+      {name:"Presentation", max:10, desc:"Clarity, structure and confidence of the pitch, including handling questions."},
+      {name:"Impact", max:10, desc:"How useful, feasible and meaningful the solution would be in the real world."}
+    ],
+    teams: {
+      A: Array.from({length:22},(_,i)=>"Team A"+(i+1)),
+      B: Array.from({length:23},(_,i)=>"Team B"+(i+1))
+    }
+  };
+  const JUDGES = [1,2,3];
+  const PANEL_NAME = {A:"Panel A", B:"Panel B"};
+
+  const state = {
+    config: structuredClone(DEFAULT_CONFIG),
+    scores: {},              // "A-1" -> {scores:{teamIdx:{critIdx:value}}}
+    view: "leaderboard",
+    lbFilter: "all",
+    session: null            // {role:"A"|"B"|"admin", judge:1, code:"..."}
+  };
+
+  try { const s = sessionStorage.getItem("judging-session"); if (s) state.session = JSON.parse(s); } catch(e){}
+  function saveSession(){ try { state.session ? sessionStorage.setItem("judging-session", JSON.stringify(state.session)) : sessionStorage.removeItem("judging-session"); } catch(e){} }
+
+  const $ = (s, r=document) => r.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fmt = n => n == null ? "–" : (Math.round(n*100)/100).toString();
+  const maxTotal = () => state.config.rubric.reduce((a,c)=>a+Number(c.max||0),0);
+
+  /* ---------- Talking to Google Sheets ---------- */
+  async function apiGet(){
+    const r = await fetch(API_URL + (API_URL.includes("?") ? "&" : "?") + "t=" + Date.now());
+    return r.json();
+  }
+  async function apiPost(body){
+    // text/plain avoids a CORS preflight, which Apps Script can't answer
+    const r = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(body)});
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || "Request failed");
+    return data;
+  }
+  function applyServerData(data){
+    if (data.config){
+      const prevSig = JSON.stringify([state.config.rubric, state.config.teams]);
+      state.config = {...structuredClone(DEFAULT_CONFIG), ...data.config};
+      if (prevSig !== JSON.stringify([state.config.rubric, state.config.teams]) && state.view === "score" && state.session && state.session.role !== "admin" && !dirtyTeams.size && !writing) renderScoring();
+    }
+    if (data.scores){
+      const next = data.scores;
+      if (mine && state.session && state.session.role !== "admin" && (dirtyTeams.size || writing)) next[myKey()] = {scores: structuredClone(mine.scores)};
+      state.scores = next;
+    }
+    onData();
+  }
+  let polling = false;
+  async function poll(){
+    if (polling || document.hidden) return;
+    polling = true;
+    try { applyServerData(await apiGet()); $("#dbNotice").classList.add("hidden"); }
+    catch(e){ const n = $("#dbNotice"); n.textContent = "Can't reach the score sheet right now. Retrying…"; n.classList.remove("hidden"); }
+    polling = false;
+  }
+
+  /* ---------- Scoring maths ---------- */
+  function judgeEntry(panel, judge, ti){
+    const d = state.scores[panel+"-"+judge];
+    return d && d.scores ? d.scores[ti] : null;
+  }
+  function judgeTotal(panel, judge, ti){
+    const e = judgeEntry(panel, judge, ti);
+    if (!e) return null;
+    let sum = 0;
+    for (let ci=0; ci<state.config.rubric.length; ci++){
+      const v = e[ci];
+      if (v === undefined || v === null || v === "" || isNaN(Number(v))) return null;
+      sum += Number(v);
+    }
+    return sum;
+  }
+  function teamRows(filter){
+    const rows = [];
+    for (const panel of ["A","B"]){
+      if (filter !== "all" && filter !== panel) continue;
+      state.config.teams[panel].forEach((name, ti) => {
+        const totals = JUDGES.map(j => judgeTotal(panel, j, ti));
+        const got = totals.filter(t => t !== null);
+        rows.push({panel, ti, name, totals, count: got.length,
+          avg: got.length ? got.reduce((a,b)=>a+b,0)/got.length : null});
+      });
+    }
+    rows.sort((x,y) => (y.avg ?? -1) - (x.avg ?? -1) || y.count - x.count || x.name.localeCompare(y.name, undefined, {numeric:true}));
+    return rows;
+  }
+
+  /* ---------- Navigation ---------- */
+  function show(view){
+    state.view = view;
+    if (view === "score" && !state.session) view = "login";
+    if (view === "admin" && state.session?.role !== "admin") view = "login";
+    for (const id of ["leaderboard","rubric","login","score","admin"]) $("#view-"+id).classList.toggle("hidden", id !== view);
+    document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-current", String(t.dataset.view === state.view || (t.dataset.view==="score" && view==="login"))));
+    renderTabs();
+    if (view === "leaderboard") renderLeaderboard();
+    if (view === "rubric") renderRubric();
+    if (view === "login") renderLogin();
+    if (view === "score") renderScoring();
+    if (view === "admin") renderAdmin();
+    window.scrollTo(0,0);
+  }
+  function renderTabs(){
+    const s = state.session;
+    $("#tabScore").textContent = !s ? "Panel login" : s.role === "admin" ? "Log out" : PANEL_NAME[s.role] + " scoring";
+    $("#tabAdmin").classList.toggle("hidden", s?.role !== "admin");
+    $("#eventName").textContent = state.config.event || "Judging scoreboard";
+    document.title = state.config.event || "Judging scoreboard";
+  }
+  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+    if (t.dataset.view === "score" && state.session?.role === "admin"){ state.session = null; saveSession(); show("leaderboard"); return; }
+    show(t.dataset.view);
+  }));
+
+  /* ---------- Leaderboard ---------- */
+  function renderLeaderboard(){
+    const el = $("#view-leaderboard");
+    const rows = teamRows(state.lbFilter);
+    const mt = maxTotal();
+    const scored = rows.filter(r => r.avg !== null);
+    const podium = scored.slice(0,3).map((r,i) => `
+      <div class="pod ${i===0?"p1":""}">
+        <div class="place">${["First","Second","Third"][i]} place</div>
+        <div class="name">${esc(r.name)} <span class="chip ${r.panel}">${PANEL_NAME[r.panel]}</span></div>
+        <div class="score">${fmt(r.avg)}<span class="dim" style="font-size:1.1rem"> / ${mt}</span></div>
+      </div>`).join("");
+    let rank = 0, prev = null, shown = 0;
+    const body = rows.map(r => {
+      shown++;
+      if (r.avg !== null && r.avg !== prev){ rank = shown; prev = r.avg; }
+      const pct = r.avg !== null && mt ? Math.round(r.avg/mt*100) : 0;
+      return `<tr class="${r.avg!==null && rank===1 ? "top1":""}">
+        <td class="rank">${r.avg===null ? "–" : rank}</td>
+        <td><b>${esc(r.name)}</b></td>
+        <td><span class="chip ${r.panel}">${PANEL_NAME[r.panel]}</span></td>
+        ${r.totals.map(t => `<td class="r ${t===null?"dim":""}">${fmt(t)}</td>`).join("")}
+        <td class="r dim">${r.count}/3</td>
+        <td class="r"><span class="avg">${fmt(r.avg)}</span><span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span></td>
+      </tr>`;
+    }).join("");
+    el.innerHTML = `
+      <div class="lb-head">
+        <h2>Overall leaderboard</h2>
+        <div class="seg" role="group" aria-label="Filter by panel">
+          ${["all","A","B"].map(f => `<button data-f="${f}" aria-pressed="${state.lbFilter===f}">${f==="all"?"All teams":PANEL_NAME[f]}</button>`).join("")}
+        </div>
+      </div>
+      ${scored.length ? `<div class="podium">${podium}</div>` : `<p class="dim">No complete scores yet. Rankings appear as soon as a judge fills in every rubric item for a team.</p>`}
+      <div class="scroll"><table>
+        <thead><tr><th>Rank</th><th>Team</th><th>Panel</th><th class="r">Judge 1</th><th class="r">Judge 2</th><th class="r">Judge 3</th><th class="r">Scored</th><th class="r">Average / ${mt}</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table></div>
+      <p class="dim" style="font-size:.9rem;margin-top:10px">Average is taken over the judges who have scored every rubric item for that team. Ties share a rank. Updates every few seconds.</p>`;
+    el.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => { state.lbFilter = b.dataset.f; renderLeaderboard(); }));
+  }
+
+  /* ---------- Rubric ---------- */
+  function renderRubric(){
+    const r = state.config.rubric;
+    $("#view-rubric").innerHTML = `
+      <div class="lb-head"><h2>Rubric</h2><span class="dim">Total available: <b>${maxTotal()}</b> points per judge</span></div>
+      <div class="rubric">${r.map(c => `
+        <div class="crit"><h3>${esc(c.name)}</h3><div class="max">${esc(c.max)} pts</div><p>${esc(c.desc)}</p></div>`).join("")}
+      </div>`;
+  }
+
+  /* ---------- Login ---------- */
+  let loginRole = "A";
+  function renderLogin(){
+    const el = $("#view-login");
+    el.innerHTML = `
+      <div class="card">
+        <h2>Panel login</h2>
+        <p class="dim" style="margin:0">Choose your panel and enter its passcode.</p>
+        <div class="choices" role="group" aria-label="Panel">
+          <button class="choice A" data-r="A" aria-pressed="${loginRole==="A"}">Panel A<br><span class="dim" style="font-weight:400">${state.config.teams.A.length} teams</span></button>
+          <button class="choice B" data-r="B" aria-pressed="${loginRole==="B"}">Panel B<br><span class="dim" style="font-weight:400">${state.config.teams.B.length} teams</span></button>
+          <button class="choice X" data-r="admin" aria-pressed="${loginRole==="admin"}">Organiser<br><span class="dim" style="font-weight:400">settings</span></button>
+        </div>
+        <label for="pc">Passcode</label>
+        <input id="pc" type="password" autocomplete="off">
+        <div class="err" id="loginErr" role="alert"></div>
+        <button class="big" id="loginBtn">Log in</button>
+      </div>`;
+    el.querySelectorAll(".choice").forEach(b => b.addEventListener("click", () => { loginRole = b.dataset.r; renderLogin(); $("#pc").focus(); }));
+    const go = async () => {
+      const code = $("#pc").value.trim();
+      if (!API_URL){ $("#loginErr").textContent = "The site isn't connected to a score sheet yet."; return; }
+      $("#loginBtn").disabled = true; $("#loginErr").textContent = "Checking…";
+      try {
+        await apiPost({action:"login", role: loginRole, code});
+        state.session = {role: loginRole, judge: 1, code}; saveSession();
+        show(loginRole === "admin" ? "admin" : "score");
+      } catch(e){
+        $("#loginErr").textContent = /passcode/i.test(e.message) ? "That passcode doesn't match. Check with the organiser." : "Couldn't reach the score sheet. Check your connection and try again.";
+        $("#loginBtn").disabled = false;
+      }
+    };
+    $("#loginBtn").addEventListener("click", go);
+    $("#pc").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  }
+
+  /* ---------- Scoring ---------- */
+  let mine = null, saveTimer = null, writing = false;
+  const dirtyTeams = new Set();
+  function myKey(){ return state.session.role + "-" + state.session.judge; }
+  function loadMine(){
+    const d = state.scores[myKey()];
+    mine = {scores: structuredClone(d?.scores || {})};
+  }
+  function setStatus(t){ const s = $("#saveStatus"); if (s) s.textContent = t; }
+
+  function renderScoring(){
+    const s = state.session, panel = s.role, rub = state.config.rubric;
+    loadMine();
+    const el = $("#view-score");
+    el.style.setProperty("--accent", `var(--${panel.toLowerCase()})`);
+    el.innerHTML = `
+      <div class="score-head">
+        <h2>${PANEL_NAME[panel]} scoring</h2>
+        <div class="judges" role="group" aria-label="Judge">
+          ${JUDGES.map(j => `<button class="ghost" data-j="${j}" aria-pressed="${s.judge===j}" style="${s.judge===j?"background:var(--ink);color:var(--bg);border-color:var(--ink)":""}">Judge ${j}</button>`).join("")}
+        </div>
+        <button class="ghost" id="logout">Log out</button>
+      </div>
+      <p class="status"><span id="progressText"></span> <span id="saveStatus">Scores save automatically.</span></p>
+      <div class="progress"><i id="progressBar" style="width:0"></i></div>
+      <div class="teams">
+        ${state.config.teams[panel].map((name, ti) => `
+          <div class="team" data-ti="${ti}">
+            <div class="team-top"><b>${esc(name)}</b><span><span class="num" data-total="${ti}">–</span><span class="dim"> / ${maxTotal()}</span></span></div>
+            <div class="crit-inputs">
+              ${rub.map((c, ci) => `<label>${esc(c.name)} (0–${esc(c.max)})
+                <input type="number" inputmode="decimal" min="0" max="${esc(c.max)}" step="0.5" data-ti="${ti}" data-ci="${ci}" value="${esc(mine.scores[ti]?.[ci] ?? "")}"></label>`).join("")}
+            </div>
+          </div>`).join("")}
+      </div>
+      <h3 class="sub">${PANEL_NAME[panel]} averages so far</h3>
+      <div class="scroll" id="panelTable"></div>`;
+    el.querySelectorAll(".judges button").forEach(b => b.addEventListener("click", async () => {
+      await flushSave();
+      state.session.judge = Number(b.dataset.j); saveSession(); renderScoring();
+    }));
+    $("#logout").addEventListener("click", async () => { await flushSave(); state.session = null; saveSession(); show("leaderboard"); });
+    el.querySelector(".teams").addEventListener("input", onScoreInput);
+    refreshScoringDerived();
+  }
+
+  function onScoreInput(e){
+    const inp = e.target; if (!inp.matches("input[data-ci]")) return;
+    const ti = inp.dataset.ti, ci = inp.dataset.ci, max = Number(state.config.rubric[ci].max);
+    const raw = inp.value.trim();
+    mine.scores[ti] = mine.scores[ti] || {};
+    if (raw === ""){ delete mine.scores[ti][ci]; inp.classList.remove("bad"); }
+    else {
+      const v = Number(raw);
+      if (isNaN(v) || v < 0 || v > max){ inp.classList.add("bad"); setStatus(`Scores must be between 0 and ${max}.`); return; }
+      inp.classList.remove("bad"); mine.scores[ti][ci] = v;
+    }
+    state.scores[myKey()] = {scores: structuredClone(mine.scores)};
+    refreshScoringDerived();
+    dirtyTeams.add(String(ti));
+    setStatus("Saving…");
+    clearTimeout(saveTimer); saveTimer = setTimeout(doSave, 900);
+  }
+  async function doSave(){
+    saveTimer = null;
+    if (writing) return;            // the running save loops and picks up newer changes
+    writing = true;
+    while (dirtyTeams.size){
+      const teams = [...dirtyTeams]; dirtyTeams.clear();
+      const changes = {}; teams.forEach(ti => changes[ti] = mine.scores[ti] || {});
+      try {
+        await apiPost({action:"saveScores", panel: state.session.role, judge: state.session.judge, code: state.session.code, changes});
+        setStatus("Saved.");
+      } catch(err){
+        teams.forEach(ti => dirtyTeams.add(ti));
+        setStatus(/passcode/i.test(err.message) ? "Not saved: the panel passcode has changed. Log out and log in again." : "Couldn't save. Retrying in a few seconds…");
+        writing = false;
+        if (!/passcode/i.test(err.message)) saveTimer = setTimeout(doSave, 4000);
+        return;
+      }
+    }
+    writing = false;
+  }
+  async function flushSave(){
+    if (saveTimer){ clearTimeout(saveTimer); saveTimer = null; }
+    if (dirtyTeams.size) await doSave();
+    while (writing) await new Promise(r => setTimeout(r, 100));
+  }
+  window.addEventListener("beforeunload", e => { if (dirtyTeams.size || writing){ e.preventDefault(); e.returnValue = ""; } });
+
+  function refreshScoringDerived(){
+    if (state.view !== "score" || !state.session || state.session.role === "admin" || !$("#progressBar")) return;
+    const panel = state.session.role, j = state.session.judge, n = state.config.teams[panel].length;
+    let done = 0;
+    for (let ti=0; ti<n; ti++){
+      const t = judgeTotal(panel, j, ti);
+      const tEl = document.querySelector(`[data-total="${ti}"]`);
+      if (tEl) tEl.textContent = fmt(t);
+      document.querySelector(`.team[data-ti="${ti}"]`)?.classList.toggle("done", t !== null);
+      if (t !== null) done++;
+    }
+    $("#progressText").textContent = `Judge ${j}: ${done} of ${n} teams fully scored.`;
+    $("#progressBar").style.width = (n ? done/n*100 : 0) + "%";
+    const rows = teamRows(panel);
+    $("#panelTable").innerHTML = `<table><thead><tr><th>Team</th><th class="r">Judge 1</th><th class="r">Judge 2</th><th class="r">Judge 3</th><th class="r">Average</th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td>${esc(r.name)}</td>${r.totals.map(t=>`<td class="r ${t===null?"dim":""}">${fmt(t)}</td>`).join("")}<td class="r"><b>${fmt(r.avg)}</b></td></tr>`).join("")}
+    </tbody></table>`;
+  }
+
+  function syncMyInputs(){
+    if (state.view !== "score" || !state.session || state.session.role === "admin") return;
+    if (writing || dirtyTeams.size) return;
+    const active = document.activeElement;
+    if (active && active.matches && active.matches("input[data-ci]")) return;
+    loadMine();
+    document.querySelectorAll("#view-score input[data-ci]").forEach(inp => {
+      const v = mine.scores[inp.dataset.ti]?.[inp.dataset.ci];
+      inp.value = v ?? "";
+    });
+  }
+
+  /* ---------- Admin ---------- */
+  let draft = null;
+  function renderAdmin(){
+    draft = structuredClone(state.config);
+    const el = $("#view-admin");
+    el.innerHTML = `
+      <div class="lb-head"><h2>Settings</h2><button class="ghost" id="adminOut">Log out</button></div>
+      <div class="admin-grid">
+        <div class="box">
+          <h3>Event</h3>
+          <label for="evName">Event name</label><input id="evName" type="text" value="${esc(draft.event)}">
+          <h3 style="margin-top:18px">Change passcodes</h3>
+          <p class="dim" style="margin:0;font-size:.9rem">Leave a box empty to keep the current passcode. Passcodes are checked by the Google Sheet, not shown on the site.</p>
+          <label for="cA">New Panel A passcode</label><input id="cA" type="text" autocomplete="off">
+          <label for="cB">New Panel B passcode</label><input id="cB" type="text" autocomplete="off">
+          <label for="cX">New organiser passcode</label><input id="cX" type="text" autocomplete="off">
+        </div>
+        <div class="box">
+          <h3>Teams</h3>
+          <p class="dim" style="margin:0;font-size:.9rem">One team per line. Renaming keeps scores; scores follow line position, so avoid reordering once judging starts.</p>
+          <label for="tA">Panel A (<span id="nA"></span>)</label><textarea id="tA">${esc(draft.teams.A.join("\n"))}</textarea>
+          <label for="tB">Panel B (<span id="nB"></span>)</label><textarea id="tB">${esc(draft.teams.B.join("\n"))}</textarea>
+        </div>
+        <div class="box" style="grid-column:1/-1">
+          <h3>Rubric</h3>
+          <div id="critList"></div>
+          <button class="ghost" id="addCrit">Add criterion</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="big" id="saveCfg">Save settings</button>
+        <button class="ghost" id="exportCsv">Download scores (CSV)</button>
+        <button class="ghost danger" id="resetAll">Clear all scores</button>
+        <span id="adminMsg" class="dim" role="status"></span>
+      </div>`;
+    const counts = () => { $("#nA").textContent = lines($("#tA").value).length + " teams"; $("#nB").textContent = lines($("#tB").value).length + " teams"; };
+    counts(); $("#tA").addEventListener("input", counts); $("#tB").addEventListener("input", counts);
+    renderCritList();
+    $("#addCrit").addEventListener("click", () => { readCrits(); draft.rubric.push({name:"New criterion", max:10, desc:""}); renderCritList(); });
+    $("#adminOut").addEventListener("click", () => { state.session = null; saveSession(); show("leaderboard"); });
+    $("#saveCfg").addEventListener("click", saveConfig);
+    $("#exportCsv").addEventListener("click", exportCsv);
+    $("#resetAll").addEventListener("click", resetScores);
+  }
+  const lines = t => t.split("\n").map(s => s.trim()).filter(Boolean);
+  function renderCritList(){
+    $("#critList").innerHTML = draft.rubric.map((c,i) => `
+      <div class="crit-row" data-i="${i}">
+        <input type="text" aria-label="Criterion name" value="${esc(c.name)}" data-k="name">
+        <input type="number" aria-label="Maximum points" min="1" value="${esc(c.max)}" data-k="max">
+        <button class="ghost danger" data-del="${i}" aria-label="Remove ${esc(c.name)}">Remove</button>
+        <textarea aria-label="Description" data-k="desc" placeholder="What judges should look for">${esc(c.desc)}</textarea>
+      </div>`).join("");
+    $("#critList").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
+      readCrits(); if (draft.rubric.length <= 1) return; draft.rubric.splice(Number(b.dataset.del),1); renderCritList();
+    }));
+  }
+  function readCrits(){
+    draft.rubric = [...document.querySelectorAll("#critList .crit-row")].map(r => ({
+      name: r.querySelector('[data-k="name"]').value.trim() || "Untitled",
+      max: Math.max(1, Number(r.querySelector('[data-k="max"]').value) || 10),
+      desc: r.querySelector('[data-k="desc"]').value.trim()
+    }));
+  }
+  async function saveConfig(){
+    readCrits();
+    const config = {
+      event: $("#evName").value.trim() || "Judging scoreboard",
+      rubric: draft.rubric,
+      teams: {A: lines($("#tA").value), B: lines($("#tB").value)}
+    };
+    const newCodes = {};
+    if ($("#cA").value.trim()) newCodes.A = $("#cA").value.trim();
+    if ($("#cB").value.trim()) newCodes.B = $("#cB").value.trim();
+    if ($("#cX").value.trim()) newCodes.admin = $("#cX").value.trim();
+    $("#adminMsg").textContent = "Saving…";
+    try {
+      const data = await apiPost({action:"saveConfig", code: state.session.code, config, newCodes});
+      if (newCodes.admin){ state.session.code = newCodes.admin; saveSession(); }
+      ["cA","cB","cX"].forEach(id => $("#"+id).value = "");
+      applyServerData(data);
+      $("#adminMsg").textContent = "Settings saved.";
+    } catch(e){ $("#adminMsg").textContent = /passcode/i.test(e.message) ? "Not saved: organiser passcode rejected. Log in again." : "Couldn't save settings. Try again."; }
+  }
+  function exportCsv(){
+    const rub = state.config.rubric;
+    const out = [["Panel","Team","Judge",...rub.map(c=>c.name),"Judge total"]];
+    for (const p of ["A","B"]) state.config.teams[p].forEach((name,ti) => JUDGES.forEach(j => {
+      const e = judgeEntry(p,j,ti) || {};
+      out.push([PANEL_NAME[p], name, "Judge "+j, ...rub.map((_,ci)=> e[ci] ?? ""), judgeTotal(p,j,ti) ?? ""]);
+    }));
+    out.push([]); out.push(["Rank","Team","Panel","Average","Judges scored"]);
+    teamRows("all").forEach((r,i) => out.push([r.avg===null?"":i+1, r.name, PANEL_NAME[r.panel], r.avg===null?"":fmt(r.avg), r.count]));
+    const csv = out.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+    a.download = "judging-scores.csv"; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  async function resetScores(){
+    if (!confirm("Clear every score from both panels? This can't be undone.")) return;
+    $("#adminMsg").textContent = "Clearing…";
+    try { applyServerData(await apiPost({action:"reset", code: state.session.code})); $("#adminMsg").textContent = "All scores cleared."; }
+    catch(e){ $("#adminMsg").textContent = "Couldn't clear scores."; }
+  }
+
+  /* ---------- Startup ---------- */
+  function onData(){
+    renderTabs();
+    if (state.view === "leaderboard") renderLeaderboard();
+    if (state.view === "rubric") renderRubric();
+    if (state.view === "score" && state.session && state.session.role !== "admin"){ syncMyInputs(); refreshScoringDerived(); }
+  }
+
+  show(state.view);
+  if (!API_URL){
+    const n = $("#dbNotice");
+    n.textContent = "This site isn't connected to a score sheet yet. Paste your Apps Script URL into API_URL near the top of the script in index.html.";
+    n.classList.remove("hidden");
+  } else {
+    poll();
+    setInterval(poll, POLL_MS);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  }
+})();
+</script>
+</body>
+</html>
